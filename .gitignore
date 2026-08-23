@@ -1,6 +1,6 @@
 node_modules/
 dist/
-lib/
+# لا تتجاهل web/src/lib — هذا كود التطبيق
 .env
 .env.local
 *.log

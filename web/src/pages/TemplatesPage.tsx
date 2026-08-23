@@ -170,10 +170,12 @@ function SubjectCard({
       <div className="mt-3">
         <p className="mb-2 text-xs text-[var(--color-slate)]/55">
           {leaves.length} عمود إدخال
-          {columns.some((c) => c.children?.length) ? ` · ${columns.filter((c) => c.children?.length).length} مجموعة رئيسية` : ''}
+          {columns.some((c: ColumnDef) => c.children?.length)
+            ? ` · ${columns.filter((c: ColumnDef) => c.children?.length).length} مجموعة رئيسية`
+            : ''}
         </p>
         <div className="space-y-2">
-          {columns.map((col) => (
+          {columns.map((col: ColumnDef) => (
             <ColumnChip key={col.id} col={col} />
           ))}
         </div>
@@ -184,7 +186,7 @@ function SubjectCard({
           <p className="mb-3 text-sm font-semibold text-[var(--color-teal-deep)]">محرر الأعمدة</p>
 
           <div className="space-y-2">
-            {columns.map((col) => (
+            {columns.map((col: ColumnDef) => (
               <ColumnEditor
                 key={col.id}
                 col={col}
