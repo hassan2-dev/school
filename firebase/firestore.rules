@@ -1,0 +1,117 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function role() {
+      return userDoc().role;
+    }
+
+    function isAdmin() {
+      return signedIn() && role() == 'admin';
+    }
+
+    function belongsToSchool(schoolId) {
+      return signedIn() && (
+        isAdmin() ||
+        schoolId in userDoc().schoolIds
+      );
+    }
+
+    function canWriteSchool(schoolId) {
+      return signedIn() && (
+        isAdmin() ||
+        (role() == 'schoolAdmin' && schoolId in userDoc().schoolIds)
+      );
+    }
+
+    function canEditScores(schoolId) {
+      return signedIn() && (
+        isAdmin() ||
+        (role() in ['schoolAdmin', 'teacher'] && schoolId in userDoc().schoolIds)
+      );
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /schools/{schoolId} {
+      allow read: if belongsToSchool(schoolId);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /academicYears/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canWriteSchool(request.resource.data.schoolId);
+      allow update, delete: if canWriteSchool(resource.data.schoolId);
+    }
+
+    match /grades/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canWriteSchool(request.resource.data.schoolId);
+      allow update, delete: if canWriteSchool(resource.data.schoolId);
+    }
+
+    match /sections/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canWriteSchool(request.resource.data.schoolId);
+      allow update, delete: if canWriteSchool(resource.data.schoolId);
+    }
+
+    match /subjects/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canWriteSchool(request.resource.data.schoolId);
+      allow update, delete: if canWriteSchool(resource.data.schoolId);
+    }
+
+    match /students/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canWriteSchool(request.resource.data.schoolId);
+      allow update, delete: if canWriteSchool(resource.data.schoolId);
+    }
+
+    match /enrollments/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canWriteSchool(request.resource.data.schoolId);
+      allow update, delete: if canWriteSchool(resource.data.schoolId);
+    }
+
+    match /assessmentTemplates/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canWriteSchool(request.resource.data.schoolId);
+      allow update, delete: if canWriteSchool(resource.data.schoolId);
+    }
+
+    match /assessments/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canEditScores(request.resource.data.schoolId);
+      allow update, delete: if canEditScores(resource.data.schoolId);
+    }
+
+    match /scores/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canEditScores(request.resource.data.schoolId);
+      allow update, delete: if canEditScores(resource.data.schoolId);
+    }
+
+    match /documents/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canWriteSchool(request.resource.data.schoolId);
+      allow update, delete: if canWriteSchool(resource.data.schoolId);
+    }
+
+    match /imports/{id} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if canWriteSchool(request.resource.data.schoolId);
+      allow update, delete: if canWriteSchool(resource.data.schoolId);
+    }
+  }
+}

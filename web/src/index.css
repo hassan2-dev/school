@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Cairo', Tahoma, sans-serif;
+  --font-display: 'Amiri', 'Cairo', serif;
+  --color-ink: #0b1c24;
+  --color-slate: #1a3340;
+  --color-teal: #0e5c66;
+  --color-teal-deep: #084049;
+  --color-mint: #d7ebe8;
+  --color-paper: #f5f7f6;
+  --color-line: #c5d4d2;
+  --color-warn: #a15c12;
+  --color-danger: #9b1c1c;
+  --color-ok: #0f6b4c;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background-color: #e9eef0;
+  background-image:
+    linear-gradient(180deg, rgba(8, 64, 73, 0.08), transparent 28%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 23px,
+      rgba(14, 92, 102, 0.035) 24px
+    );
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.sheet-paper {
+  background: #fff;
+  color: #000;
+  border: 1px solid var(--color-line);
+}
+
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.sheet-table th,
+.sheet-table td {
+  border: 1px solid #222;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.sheet-table th {
+  background: #f0f0f0;
+  font-weight: 700;
+}
+
+.sheet-table td.name-cell,
+.sheet-table th.name-cell {
+  text-align: right;
+}
+
+.sheet-table th.group-head {
+  background: #e8eef0;
+  font-weight: 800;
+}
+
+.nested-print-table th {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .sheet-page {
+    break-after: page;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .sheet-page:last-child {
+    break-after: auto;
+  }
+
+  main,
+  .print-root {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  .sheet-page.landscape-sheet {
+    max-width: 100% !important;
+  }
+}
+
+@page landscape-sheet {
+  size: A4 landscape;
+  margin: 10mm;
+}

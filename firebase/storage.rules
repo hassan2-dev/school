@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return signedIn() && userDoc().role == 'admin';
+    }
+
+    function belongsToSchool(schoolId) {
+      return signedIn() && (isAdmin() || schoolId in userDoc().schoolIds);
+    }
+
+    function canWriteSchool(schoolId) {
+      return signedIn() && (
+        isAdmin() ||
+        (userDoc().role == 'schoolAdmin' && schoolId in userDoc().schoolIds)
+      );
+    }
+
+    // schools/{schoolId}/academic-years/{yearId}/documents/{documentId}/{fileName}
+    match /schools/{schoolId}/academic-years/{yearId}/documents/{documentId}/{fileName} {
+      allow read: if belongsToSchool(schoolId);
+      allow write: if canWriteSchool(schoolId)
+        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType.matches('application/(pdf|vnd\\..*|msword|octet-stream)|text/.*');
+    }
+  }
+}
