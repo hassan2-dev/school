@@ -83,6 +83,24 @@ body {
   white-space: nowrap;
 }
 
+.sheet-style-formal .sheet-table th {
+  background: #f5f5f5;
+}
+
+.sheet-style-clean {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+}
+
+.sheet-style-clean .sheet-table th,
+.sheet-style-clean .sheet-table td {
+  border-color: #444;
+  padding: 7px 8px;
+}
+
+.sheet-style-classic .sheet-table th {
+  background: #ececec;
+}
+
 @media print {
   body {
     background: #fff !important;

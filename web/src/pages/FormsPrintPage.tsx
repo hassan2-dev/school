@@ -3,26 +3,45 @@ import { ensureColumns, flatLeaves } from '../lib/columns';
 import {
   ClassGradeSheet,
   IndividualGradeSheet,
+  PRINT_STYLE_OPTIONS,
   buildBlankIndividual,
   type ClassSheetData,
   type IndividualSheetData,
 } from '../components/print/GradeSheets';
 import { Btn, PageHeader, Panel } from '../components/ui';
 import { useStore } from '../hooks/useStore';
+import { configService } from '../services/config';
 import { scoreService } from '../services/scores';
 import { templateService } from '../services/templates';
+import type { PrintHeader, PrintSheetStyle } from '../types/core';
 
 type Tab = 'individual-blank' | 'individual-filled' | 'class-blank' | 'class-filled';
+
+function defaultHeader(config: { name: string; academicYear: string; republicTitle?: string; ministryTitle?: string; directorate?: string }): PrintHeader {
+  return {
+    republicTitle: config.republicTitle || 'جمهورية العراق',
+    ministryTitle: config.ministryTitle || 'وزارة التربية',
+    directorate: config.directorate || '',
+    schoolName: config.name,
+    academicYear: config.academicYear,
+    documentTitle: 'كشف درجات المادة',
+    examLabel: 'امتحان نهاية السنة',
+    teacherName: '',
+    style: 'formal',
+  };
+}
 
 export function FormsPrintPage() {
   const { config, grades, sections, students } = useStore();
   const [gradeId, setGradeId] = useState(grades[0]?.id || '');
   const [sectionId, setSectionId] = useState('');
   const [subjectId, setSubjectId] = useState('');
-  const [tab, setTab] = useState<Tab>('individual-blank');
+  const [tab, setTab] = useState<Tab>('class-blank');
   const [studentId, setStudentId] = useState('');
   const [blankCopies, setBlankCopies] = useState(1);
-  const [blankRows, setBlankRows] = useState(25);
+  const [extraBlankRows, setExtraBlankRows] = useState(5);
+  const [includeRoster, setIncludeRoster] = useState(true);
+  const [header, setHeader] = useState<PrintHeader>(() => defaultHeader(config));
 
   const gradeSections = sections.filter((s) => s.gradeId === gradeId);
   const grade = grades.find((g) => g.id === gradeId);
@@ -49,6 +68,21 @@ export function FormsPrintPage() {
     }
   }, [gradeId, template, subjectId]);
 
+  function patchHeader<K extends keyof PrintHeader>(key: K, value: PrintHeader[K]) {
+    setHeader((h) => ({ ...h, [key]: value }));
+  }
+
+  function saveHeaderDefaults() {
+    configService.update({
+      name: header.schoolName,
+      academicYear: header.academicYear,
+      republicTitle: header.republicTitle,
+      ministryTitle: header.ministryTitle,
+      directorate: header.directorate,
+    });
+    alert('تم حفظ بيانات الرأس كمدرسة افتراضية');
+  }
+
   const individualSheets: IndividualSheetData[] = useMemo(() => {
     if (!grade || !section) return [];
     const subjectNames = template?.subjects.map((s) => s.name) ?? [];
@@ -56,8 +90,8 @@ export function FormsPrintPage() {
     if (tab === 'individual-blank') {
       return Array.from({ length: Math.max(1, blankCopies) }, () =>
         buildBlankIndividual({
-          schoolName: config.name,
-          yearLabel: config.academicYear,
+          schoolName: header.schoolName,
+          yearLabel: header.academicYear,
           gradeName: grade.name,
           sectionName: section.name,
           maxScore: grade.maxScore,
@@ -72,21 +106,22 @@ export function FormsPrintPage() {
     return targets.map((st, idx) => {
       const stScores = scoreService.getForStudent(st.id);
       return {
-        schoolName: config.name,
-        academicYear: config.academicYear,
+        schoolName: header.schoolName,
+        academicYear: header.academicYear,
         gradeName: grade.name,
         sectionName: section.name,
         studentName: st.fullName,
         studentNumber: idx + 1,
         maxScore: grade.maxScore,
         mode: 'filled' as const,
+        header,
         rows: (template?.subjects ?? []).map((sub) => {
           const sc = stScores.find((s) => s.subjectId === sub.id);
           return { subjectName: sub.name, score: sc?.finalScore ?? '', notes: '' };
         }),
       };
     });
-  }, [tab, grade, section, template, roster, studentId, blankCopies, config]);
+  }, [tab, grade, section, template, roster, studentId, blankCopies, header]);
 
   const classSheet: ClassSheetData | null = useMemo(() => {
     if (!grade || !section || !subject) return null;
@@ -97,23 +132,30 @@ export function FormsPrintPage() {
     const scores = scoreService.getForSectionSubject(section.id, subject.id);
 
     if (tab === 'class-blank') {
+      const rows = includeRoster
+        ? roster.map((st, i) => ({
+            number: i + 1,
+            studentName: st.fullName,
+            valuesById: {} as Record<string, string | number | null | undefined>,
+            final: '',
+          }))
+        : [];
+
       return {
-        schoolName: config.name,
-        academicYear: config.academicYear,
+        header,
         gradeName: grade.name,
         sectionName: section.name,
         subjectName: subject.name,
         maxScore: grade.maxScore,
         columns,
-        rows: [],
+        rows,
         mode: 'blank',
-        blankRowCount: blankRows,
+        extraBlankRows: includeRoster ? extraBlankRows : Math.max(extraBlankRows, 20),
       };
     }
 
     return {
-      schoolName: config.name,
-      academicYear: config.academicYear,
+      header,
       gradeName: grade.name,
       sectionName: section.name,
       subjectName: subject.name,
@@ -124,10 +166,7 @@ export function FormsPrintPage() {
         const sc = scores.find((s) => s.studentId === st.id);
         const valuesById: Record<string, string | number | null | undefined> = {};
         for (const leaf of leaves) {
-          // Prefer id key; fallback to label for older saved scores
-          const byId = sc?.values?.[leaf.id];
-          const byLabel = sc?.values?.[leaf.label];
-          valuesById[leaf.id] = byId ?? byLabel ?? '';
+          valuesById[leaf.id] = sc?.values?.[leaf.id] ?? sc?.values?.[leaf.label] ?? '';
         }
         return {
           number: i + 1,
@@ -137,20 +176,22 @@ export function FormsPrintPage() {
         };
       }),
     };
-  }, [tab, grade, section, subject, roster, blankRows, config]);
+  }, [tab, grade, section, subject, roster, extraBlankRows, includeRoster, header]);
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'individual-blank', label: 'انفرادية فارغة' },
-    { id: 'individual-filled', label: 'انفرادية بالدرجات' },
     { id: 'class-blank', label: 'كشف مادة فارغ' },
     { id: 'class-filled', label: 'كشف مادة بالدرجات' },
+    { id: 'individual-blank', label: 'انفرادية فارغة' },
+    { id: 'individual-filled', label: 'انفرادية بالدرجات' },
   ];
+
+  const isClassTab = tab === 'class-blank' || tab === 'class-filled';
 
   return (
     <div className="space-y-6 print-root">
       <PageHeader
         title="الطباعة"
-        subtitle="انفرادية · كشف مادة مع أعمدة رئيسية وفرعية مرتبة مثل القالب"
+        subtitle="عدّل الرأس والعام وقالب الشكل — الطلاب المستوردون من Excel يظهرون تلقائياً في الكشف الفارغ"
         actions={
           <Btn className="no-print" onClick={() => window.print()}>
             طباعة
@@ -173,6 +214,7 @@ export function FormsPrintPage() {
             </button>
           ))}
         </div>
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Select
             label="الصف"
@@ -186,7 +228,7 @@ export function FormsPrintPage() {
             onChange={setSectionId}
             options={gradeSections.map((s) => ({ value: s.id, label: `شعبة ${s.name}` }))}
           />
-          {(tab === 'class-blank' || tab === 'class-filled') && (
+          {isClassTab && (
             <Select
               label="المادة"
               value={subjectId}
@@ -215,34 +257,109 @@ export function FormsPrintPage() {
               />
             </label>
           )}
-          {tab === 'class-blank' && (
-            <label className="text-sm">
-              عدد الصفوف
-              <input
-                type="number"
-                min={5}
-                max={50}
-                value={blankRows}
-                onChange={(e) => setBlankRows(Number(e.target.value) || 25)}
-                className="mt-1 w-full rounded-xl border px-3 py-2"
-              />
-            </label>
-          )}
         </div>
-        {(tab === 'class-blank' || tab === 'class-filled') && subject && (
-          <p className="mt-3 text-xs text-[var(--color-slate)]/60">
-            أعمدة القالب: {flatLeaves(ensureColumns(subject)).map((l) => l.label).join(' · ')}
+
+        {isClassTab && (
+          <p className="mt-3 text-sm text-[var(--color-teal-deep)]">
+            طلاب الشعبة (من قاعدة البيانات / Excel): <strong>{roster.length}</strong>
+            {subject ? ` · أعمدة: ${flatLeaves(ensureColumns(subject)).map((l) => l.label).join(' · ')}` : ''}
           </p>
         )}
       </Panel>
 
+      {isClassTab && (
+        <Panel className="no-print" title="تعديل رأس الكشف بالكامل">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <FieldInput label="سطر الدولة" value={header.republicTitle} onChange={(v) => patchHeader('republicTitle', v)} />
+            <FieldInput label="الوزارة" value={header.ministryTitle} onChange={(v) => patchHeader('ministryTitle', v)} />
+            <FieldInput label="المديرية / المنطقة" value={header.directorate} onChange={(v) => patchHeader('directorate', v)} placeholder="مديرية تربية الرصافة..." />
+            <FieldInput label="اسم المدرسة" value={header.schoolName} onChange={(v) => patchHeader('schoolName', v)} />
+            <FieldInput label="العام الدراسي" value={header.academicYear} onChange={(v) => patchHeader('academicYear', v)} placeholder="2025/2026" />
+            <FieldInput label="عنوان الكشف" value={header.documentTitle} onChange={(v) => patchHeader('documentTitle', v)} />
+            <FieldInput label="نوع الامتحان" value={header.examLabel} onChange={(v) => patchHeader('examLabel', v)} placeholder="سعي / شهري / نهاية السنة" />
+            <FieldInput label="اسم المعلم" value={header.teacherName} onChange={(v) => patchHeader('teacherName', v)} placeholder="اختياري" />
+            {tab === 'class-blank' && (
+              <>
+                <label className="flex items-end gap-2 pb-2 text-sm">
+                  <input type="checkbox" checked={includeRoster} onChange={(e) => setIncludeRoster(e.target.checked)} />
+                  إدراج أسماء الطلاب من الشعبة (Excel)
+                </label>
+                <label className="text-sm">
+                  صفوف فارغة إضافية
+                  <input
+                    type="number"
+                    min={0}
+                    max={40}
+                    value={extraBlankRows}
+                    onChange={(e) => setExtraBlankRows(Number(e.target.value) || 0)}
+                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                  />
+                </label>
+              </>
+            )}
+          </div>
+
+          <div className="mt-5">
+            <p className="mb-2 text-sm font-semibold">قالب الشكل</p>
+            <div className="grid gap-3 md:grid-cols-3">
+              {PRINT_STYLE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => patchHeader('style', opt.id as PrintSheetStyle)}
+                  className={`rounded-2xl border p-4 text-right transition ${
+                    header.style === opt.id
+                      ? 'border-[var(--color-teal)] bg-[var(--color-mint)]/40 ring-2 ring-[var(--color-teal)]/30'
+                      : 'border-[var(--color-line)] hover:border-[var(--color-teal)]/40'
+                  }`}
+                >
+                  <p className="font-semibold">{opt.label}</p>
+                  <p className="mt-1 text-xs text-[var(--color-slate)]/60">{opt.hint}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Btn variant="ghost" onClick={saveHeaderDefaults}>
+              حفظ الرأس كافتراضي للمدرسة
+            </Btn>
+            <Btn variant="ghost" onClick={() => setHeader(defaultHeader(config))}>
+              استعادة الافتراضي
+            </Btn>
+          </div>
+        </Panel>
+      )}
+
       {(tab === 'individual-blank' || tab === 'individual-filled') &&
         individualSheets.map((sheet, i) => <IndividualGradeSheet key={i} data={sheet} />)}
 
-      {(tab === 'class-blank' || tab === 'class-filled') && classSheet && (
-        <ClassGradeSheet data={classSheet} />
-      )}
+      {isClassTab && classSheet && <ClassGradeSheet data={classSheet} />}
     </div>
+  );
+}
+
+function FieldInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="text-sm">
+      {label}
+      <input
+        className="mt-1 w-full rounded-xl border border-[var(--color-line)] px-3 py-2"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
   );
 }
 

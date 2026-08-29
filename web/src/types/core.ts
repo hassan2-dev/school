@@ -3,6 +3,27 @@
 export interface SchoolConfig {
   name: string;
   academicYear: string; // 2024/2025
+  /** سطر الدولة في رأس الطباعة */
+  republicTitle?: string;
+  /** سطر الوزارة */
+  ministryTitle?: string;
+  /** المديرية / المنطقة */
+  directorate?: string;
+}
+
+export type PrintSheetStyle = 'classic' | 'formal' | 'clean';
+
+/** حقول رأس كشف المادة — قابلة للتعديل قبل الطباعة */
+export interface PrintHeader {
+  republicTitle: string;
+  ministryTitle: string;
+  directorate: string;
+  schoolName: string;
+  academicYear: string;
+  documentTitle: string;
+  examLabel: string;
+  teacherName: string;
+  style: PrintSheetStyle;
 }
 
 export interface GradeLevel {

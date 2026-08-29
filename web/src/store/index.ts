@@ -16,7 +16,17 @@ class AppStore {
   private load(): AppState {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw) as AppState;
+      if (raw) {
+        const parsed = JSON.parse(raw) as AppState;
+        // دمج حقول الرأس الجديدة إن كانت ناقصة في بيانات قديمة
+        parsed.config = {
+          republicTitle: 'جمهورية العراق',
+          ministryTitle: 'وزارة التربية',
+          directorate: '',
+          ...parsed.config,
+        };
+        return parsed;
+      }
     } catch {
       /* ignore */
     }

@@ -163,6 +163,9 @@ export function createInitialState(): AppState {
   const config: SchoolConfig = {
     name: 'مدرسة عبد الله الرضيع الابتدائية',
     academicYear: '2024/2025',
+    republicTitle: 'جمهورية العراق',
+    ministryTitle: 'وزارة التربية',
+    directorate: '',
   };
 
   const grades: GradeLevel[] = DEFAULT_GRADES.map((g) => ({
