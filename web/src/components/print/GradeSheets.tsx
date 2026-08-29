@@ -107,27 +107,30 @@ export function ClassGradeSheet({ data }: { data: ClassSheetData }) {
   const matrix = buildHeaderMatrix(columns);
   const style = data.header.style || 'classic';
 
-  const baseRows =
+  type SheetRow = ClassSheetData['rows'][number];
+  const emptyValues: SheetRow['valuesById'] = {};
+
+  const baseRows: SheetRow[] =
     data.mode === 'filled'
       ? data.rows
       : data.rows.length
         ? data.rows.map((r) => ({
             ...r,
-            valuesById: {},
+            valuesById: emptyValues,
             final: '',
           }))
         : [];
 
   const extra = Math.max(0, data.extraBlankRows ?? 0);
   const startNum = baseRows.length + 1;
-  const extraRows = Array.from({ length: extra }, (_, i) => ({
+  const extraRows: SheetRow[] = Array.from({ length: extra }, (_, i) => ({
     number: startNum + i,
     studentName: '',
-    valuesById: {} as Record<string, string | number | null | undefined>,
+    valuesById: emptyValues,
     final: '',
   }));
 
-  const rows = [...baseRows, ...extraRows];
+  const rows: SheetRow[] = [...baseRows, ...extraRows];
   const showExtraFinal =
     data.mode === 'filled' && !leaves.some((l) => /نهائي|Final/i.test(l.label));
 
@@ -171,7 +174,8 @@ export function ClassGradeSheet({ data }: { data: ClassSheetData }) {
               <td>{row.number}</td>
               <td className="name-cell">{row.studentName || '\u00A0'}</td>
               {leaves.map((leaf) => {
-                const v = row.valuesById?.[leaf.id];
+                const values = row.valuesById ?? emptyValues;
+                const v = values[leaf.id];
                 return <td key={leaf.id}>{v === '' || v == null ? '\u00A0' : v}</td>;
               })}
               {showExtraFinal && <td>{row.final === '' || row.final == null ? '\u00A0' : row.final}</td>}
