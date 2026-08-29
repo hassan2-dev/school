@@ -17,13 +17,13 @@ export function HomePage() {
       return;
     }
     store.clearData();
-    alert('تم تصفير البيانات');
+    window.location.reload();
   }
 
   function loadDemo() {
     if (!confirm('تحميل بيانات تجريبية؟ سيستبدل الطلاب الحاليين.')) return;
     store.resetDemo();
-    alert('تم تحميل البيانات التجريبية');
+    window.location.reload();
   }
 
   return (

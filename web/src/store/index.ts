@@ -1,9 +1,27 @@
 import type { AppState } from '../types/core';
 import { createDemoState, createEmptyState, createInitialState } from './seed';
 
-const STORAGE_KEY = 'school-grades-v5';
+const STORAGE_KEY = 'school-grades-v6';
+const FORCE_EMPTY_FLAG = 'school-force-empty-20260829';
+const LEGACY_KEYS = [
+  'school-grades-v2',
+  'school-grades-v3',
+  'school-grades-v4',
+  'school-grades-v5',
+  'school-grades-v6',
+];
 
 type Listener = () => void;
+
+function removeAllSchoolKeys() {
+  for (const key of LEGACY_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* ignore */
+    }
+  }
+}
 
 class AppStore {
   private state: AppState;
@@ -14,6 +32,19 @@ class AppStore {
   }
 
   private load(): AppState {
+    // مرة واحدة: مسح كل البيانات القديمة المحفوظة بالمتصفح
+    try {
+      if (!localStorage.getItem(FORCE_EMPTY_FLAG)) {
+        removeAllSchoolKeys();
+        localStorage.setItem(FORCE_EMPTY_FLAG, '1');
+        const empty = createEmptyState();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(empty));
+        return empty;
+      }
+    } catch {
+      /* ignore */
+    }
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -24,6 +55,8 @@ class AppStore {
           directorate: '',
           ...parsed.config,
         };
+        parsed.students = parsed.students ?? [];
+        parsed.scores = parsed.scores ?? [];
         return parsed;
       }
     } catch {
@@ -51,16 +84,19 @@ class AppStore {
     this.save();
   }
 
-  /** تصفير: يحذف الطلاب والدرجات، يبقي الصفوف والشعب والقوالب */
+  /** تصفير كامل للطلاب والدرجات */
   clearData() {
+    const config = this.state.config;
+    removeAllSchoolKeys();
+    localStorage.setItem(FORCE_EMPTY_FLAG, '1');
     this.state = {
       ...createEmptyState(),
-      config: this.state.config,
+      config,
     };
     this.save();
+    this.listeners.forEach((l) => l());
   }
 
-  /** إعادة بيانات تجريبية */
   resetDemo() {
     this.state = createDemoState();
     this.save();
