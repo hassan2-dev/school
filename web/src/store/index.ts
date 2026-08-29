@@ -1,7 +1,7 @@
 import type { AppState } from '../types/core';
-import { createInitialState } from './seed';
+import { createDemoState, createEmptyState, createInitialState } from './seed';
 
-const STORAGE_KEY = 'school-grades-v4';
+const STORAGE_KEY = 'school-grades-v5';
 
 type Listener = () => void;
 
@@ -18,7 +18,6 @@ class AppStore {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as AppState;
-        // دمج حقول الرأس الجديدة إن كانت ناقصة في بيانات قديمة
         parsed.config = {
           republicTitle: 'جمهورية العراق',
           ministryTitle: 'وزارة التربية',
@@ -52,9 +51,23 @@ class AppStore {
     this.save();
   }
 
-  reset() {
-    this.state = createInitialState();
+  /** تصفير: يحذف الطلاب والدرجات، يبقي الصفوف والشعب والقوالب */
+  clearData() {
+    this.state = {
+      ...createEmptyState(),
+      config: this.state.config,
+    };
     this.save();
+  }
+
+  /** إعادة بيانات تجريبية */
+  resetDemo() {
+    this.state = createDemoState();
+    this.save();
+  }
+
+  reset() {
+    this.clearData();
   }
 }
 

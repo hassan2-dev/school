@@ -158,8 +158,7 @@ function addStudents(
   }));
 }
 
-export function createInitialState(): AppState {
-  const t = nowIso();
+export function createEmptyState(): AppState {
   const config: SchoolConfig = {
     name: 'مدرسة عبد الله الرضيع الابتدائية',
     academicYear: '2024/2025',
@@ -182,15 +181,29 @@ export function createInitialState(): AppState {
   }
 
   const templates = buildGradeTemplates(grades);
-  const g1 = grades.find((g) => g.order === 1)!;
-  const g5 = grades.find((g) => g.order === 5)!;
-  const sec1A = sections.find((s) => s.gradeId === g1.id && s.name === 'أ')!;
-  const sec5B = sections.find((s) => s.gradeId === g5.id && s.name === 'ب')!;
+  return { config, grades, sections, templates, students: [], scores: [] };
+}
 
-  const students = [
-    ...addStudents(G1_STUDENTS, g1.id, sec1A.id, t),
-    ...addStudents(G5_STUDENTS, g5.id, sec5B.id, t),
-  ];
+/** بيانات تجريبية للعرض */
+export function createDemoState(): AppState {
+  const base = createEmptyState();
+  const t = nowIso();
+  const g1 = base.grades.find((g) => g.order === 1)!;
+  const g5 = base.grades.find((g) => g.order === 5)!;
+  const sec1A = base.sections.find((s) => s.gradeId === g1.id && s.name === 'أ')!;
+  const sec5B = base.sections.find((s) => s.gradeId === g5.id && s.name === 'ب')!;
 
-  return { config, grades, sections, templates, students, scores: [] };
+  return {
+    ...base,
+    students: [
+      ...addStudents(G1_STUDENTS, g1.id, sec1A.id, t),
+      ...addStudents(G5_STUDENTS, g5.id, sec5B.id, t),
+    ],
+    scores: [],
+  };
+}
+
+/** افتراضي عند أول تشغيل: فارغ بدون طلاب */
+export function createInitialState(): AppState {
+  return createEmptyState();
 }

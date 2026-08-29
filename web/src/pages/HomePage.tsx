@@ -1,11 +1,30 @@
 import { Link } from 'react-router-dom';
-import { Panel, StatCard } from '../components/ui';
+import { Btn, Panel, StatCard } from '../components/ui';
 import { useStore } from '../hooks/useStore';
+import { store } from '../store';
 
 export function HomePage() {
   const { students, grades, sections } = useStore();
   const active = students.filter((s) => s.status === 'active');
   const graduated = students.filter((s) => s.status === 'graduated');
+
+  function clearAll() {
+    if (
+      !confirm(
+        'تصفير البيانات؟\nسيتم حذف كل الطلاب والدرجات.\nتبقى الصفوف والشعب وقوالب المواد واسم المدرسة.',
+      )
+    ) {
+      return;
+    }
+    store.clearData();
+    alert('تم تصفير البيانات');
+  }
+
+  function loadDemo() {
+    if (!confirm('تحميل بيانات تجريبية؟ سيستبدل الطلاب الحاليين.')) return;
+    store.resetDemo();
+    alert('تم تحميل البيانات التجريبية');
+  }
 
   return (
     <div className="space-y-8">
@@ -50,7 +69,7 @@ export function HomePage() {
 
         <Panel title="اختصارات">
           <div className="grid gap-2 sm:grid-cols-2">
-            <Shortcut to="/students" title="إضافة طالب" desc="طالب طالب" />
+            <Shortcut to="/students" title="إضافة طالب" desc="طالب طالب أو Excel" />
             <Shortcut to="/grades" title="إضافة شعبة" desc="أ ب ج د..." />
             <Shortcut to="/templates" title="قوالب المواد" desc="تعديل أعمدة الدرجات" />
             <Shortcut to="/forms" title="طباعة" desc="انفرادية وكشوف" />
@@ -78,6 +97,20 @@ export function HomePage() {
                 </Link>
               );
             })}
+        </div>
+      </Panel>
+
+      <Panel title="إدارة البيانات">
+        <p className="mb-3 text-sm text-[var(--color-slate)]/65">
+          تصفير يحذف الطلاب والدرجات فقط، ويبقي الصفوف والشعب والقوالب.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Btn variant="warn" onClick={clearAll}>
+            تصفير البيانات
+          </Btn>
+          <Btn variant="ghost" onClick={loadDemo}>
+            تحميل بيانات تجريبية
+          </Btn>
         </div>
       </Panel>
     </div>
