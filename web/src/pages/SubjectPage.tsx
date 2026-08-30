@@ -102,7 +102,7 @@ export function SubjectPage() {
               {roster.map((st, i) => (
                 <tr key={st.id} className="border-b border-[var(--color-line)]/50">
                   <td className="px-2 py-2 text-center">{i + 1}</td>
-                  <td className="px-2 py-2 font-medium">{st.fullName}</td>
+                  <td className="px-2 py-2 text-base font-bold">{st.fullName}</td>
                   {leaves.map((leaf) => (
                     <td key={leaf.id} className="px-1 py-1">
                       <input

@@ -172,7 +172,7 @@ export function ClassGradeSheet({ data }: { data: ClassSheetData }) {
           {rows.map((row) => (
             <tr key={row.number}>
               <td>{row.number}</td>
-              <td className="name-cell">{row.studentName || '\u00A0'}</td>
+              <td className="name-cell student-name-cell">{row.studentName || '\u00A0'}</td>
               {leaves.map((leaf) => {
                 const values = row.valuesById ?? emptyValues;
                 const v = values[leaf.id];

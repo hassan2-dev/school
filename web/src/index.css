@@ -71,6 +71,17 @@ body {
 .sheet-table td.name-cell,
 .sheet-table th.name-cell {
   text-align: right;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.sheet-table td.student-name-cell {
+  text-align: right;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .sheet-table th.group-head {
