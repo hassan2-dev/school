@@ -17,18 +17,8 @@ import type { PrintHeader, PrintSheetStyle } from '../types/core';
 
 type Tab = 'individual-blank' | 'individual-filled' | 'class-blank' | 'class-filled';
 
-function defaultHeader(config: { name: string; academicYear: string; republicTitle?: string; ministryTitle?: string; directorate?: string }): PrintHeader {
-  return {
-    republicTitle: config.republicTitle || 'جمهورية العراق',
-    ministryTitle: config.ministryTitle || 'وزارة التربية',
-    directorate: config.directorate || '',
-    schoolName: config.name,
-    academicYear: config.academicYear,
-    documentTitle: 'كشف درجات المادة',
-    examLabel: 'امتحان نهاية السنة',
-    teacherName: '',
-    style: 'formal',
-  };
+function defaultHeader(config: ReturnType<typeof configService.get>): PrintHeader {
+  return configService.toPrintHeader(config);
 }
 
 export function FormsPrintPage() {
@@ -39,9 +29,24 @@ export function FormsPrintPage() {
   const [tab, setTab] = useState<Tab>('class-blank');
   const [studentId, setStudentId] = useState('');
   const [blankCopies, setBlankCopies] = useState(1);
-  const [extraBlankRows, setExtraBlankRows] = useState(5);
-  const [includeRoster, setIncludeRoster] = useState(true);
+  const [blankRows, setBlankRows] = useState(30);
   const [header, setHeader] = useState<PrintHeader>(() => defaultHeader(config));
+  const [saveMsg, setSaveMsg] = useState('');
+
+  // أعد تحميل الرأس عند تغيّر إعدادات المدرسة المحفوظة
+  useEffect(() => {
+    setHeader(defaultHeader(config));
+  }, [
+    config.name,
+    config.academicYear,
+    config.republicTitle,
+    config.ministryTitle,
+    config.directorate,
+    config.documentTitle,
+    config.examLabel,
+    config.teacherName,
+    config.printStyle,
+  ]);
 
   const gradeSections = sections.filter((s) => s.gradeId === gradeId);
   const grade = grades.find((g) => g.id === gradeId);
@@ -70,17 +75,12 @@ export function FormsPrintPage() {
 
   function patchHeader<K extends keyof PrintHeader>(key: K, value: PrintHeader[K]) {
     setHeader((h) => ({ ...h, [key]: value }));
+    setSaveMsg('');
   }
 
   function saveHeaderDefaults() {
-    configService.update({
-      name: header.schoolName,
-      academicYear: header.academicYear,
-      republicTitle: header.republicTitle,
-      ministryTitle: header.ministryTitle,
-      directorate: header.directorate,
-    });
-    alert('تم حفظ بيانات الرأس كمدرسة افتراضية');
+    configService.savePrintHeader(header);
+    setSaveMsg('تم الحفظ في localStorage — الرأس والمدرسة يبقيان بعد إغلاق الصفحة');
   }
 
   const individualSheets: IndividualSheetData[] = useMemo(() => {
@@ -132,15 +132,7 @@ export function FormsPrintPage() {
     const scores = scoreService.getForSectionSubject(section.id, subject.id);
 
     if (tab === 'class-blank') {
-      const rows = includeRoster
-        ? roster.map((st, i) => ({
-            number: i + 1,
-            studentName: st.fullName,
-            valuesById: {} as Record<string, string | number | null | undefined>,
-            final: '',
-          }))
-        : [];
-
+      // دائماً فارغ بالكامل — بدون أسماء حتى لو موجود طلاب
       return {
         header,
         gradeName: grade.name,
@@ -148,9 +140,9 @@ export function FormsPrintPage() {
         subjectName: subject.name,
         maxScore: grade.maxScore,
         columns,
-        rows,
+        rows: [],
         mode: 'blank',
-        extraBlankRows: includeRoster ? extraBlankRows : Math.max(extraBlankRows, 20),
+        extraBlankRows: Math.max(5, blankRows),
       };
     }
 
@@ -176,7 +168,7 @@ export function FormsPrintPage() {
         };
       }),
     };
-  }, [tab, grade, section, subject, roster, extraBlankRows, includeRoster, header]);
+  }, [tab, grade, section, subject, roster, blankRows, header]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'class-blank', label: 'كشف مادة فارغ' },
@@ -191,7 +183,7 @@ export function FormsPrintPage() {
     <div className="space-y-6 print-root">
       <PageHeader
         title="الطباعة"
-        subtitle="عدّل الرأس والعام وقالب الشكل — الطلاب المستوردون من Excel يظهرون تلقائياً في الكشف الفارغ"
+        subtitle="كشف فارغ = بدون أسماء. كشف بالدرجات = مع الطلاب المحفوظين. البيانات تُحفظ في المتصفح (localStorage)"
         actions={
           <Btn className="no-print" onClick={() => window.print()}>
             طباعة
@@ -257,11 +249,26 @@ export function FormsPrintPage() {
               />
             </label>
           )}
+          {tab === 'class-blank' && (
+            <label className="text-sm">
+              عدد الصفوف الفارغة
+              <input
+                type="number"
+                min={5}
+                max={50}
+                value={blankRows}
+                onChange={(e) => setBlankRows(Number(e.target.value) || 30)}
+                className="mt-1 w-full rounded-xl border px-3 py-2"
+              />
+            </label>
+          )}
         </div>
 
         {isClassTab && (
           <p className="mt-3 text-sm text-[var(--color-teal-deep)]">
-            طلاب الشعبة (من قاعدة البيانات / Excel): <strong>{roster.length}</strong>
+            {tab === 'class-blank'
+              ? 'هذا الكشف فارغ بالكامل (بدون أسماء) — حتى لو عندك طلاب محفوظين'
+              : `طلاب الشعبة المحفوظون: ${roster.length}`}
             {subject ? ` · أعمدة: ${flatLeaves(ensureColumns(subject)).map((l) => l.label).join(' · ')}` : ''}
           </p>
         )}
@@ -278,25 +285,6 @@ export function FormsPrintPage() {
             <FieldInput label="عنوان الكشف" value={header.documentTitle} onChange={(v) => patchHeader('documentTitle', v)} />
             <FieldInput label="نوع الامتحان" value={header.examLabel} onChange={(v) => patchHeader('examLabel', v)} placeholder="سعي / شهري / نهاية السنة" />
             <FieldInput label="اسم المعلم" value={header.teacherName} onChange={(v) => patchHeader('teacherName', v)} placeholder="اختياري" />
-            {tab === 'class-blank' && (
-              <>
-                <label className="flex items-end gap-2 pb-2 text-sm">
-                  <input type="checkbox" checked={includeRoster} onChange={(e) => setIncludeRoster(e.target.checked)} />
-                  إدراج أسماء الطلاب من الشعبة (Excel)
-                </label>
-                <label className="text-sm">
-                  صفوف فارغة إضافية
-                  <input
-                    type="number"
-                    min={0}
-                    max={40}
-                    value={extraBlankRows}
-                    onChange={(e) => setExtraBlankRows(Number(e.target.value) || 0)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2"
-                  />
-                </label>
-              </>
-            )}
           </div>
 
           <div className="mt-5">
@@ -320,14 +308,18 @@ export function FormsPrintPage() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Btn variant="ghost" onClick={saveHeaderDefaults}>
-              حفظ الرأس كافتراضي للمدرسة
-            </Btn>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Btn onClick={saveHeaderDefaults}>حفظ في localStorage</Btn>
             <Btn variant="ghost" onClick={() => setHeader(defaultHeader(config))}>
-              استعادة الافتراضي
+              استعادة المحفوظ
             </Btn>
+            {saveMsg && (
+              <p className="text-sm font-semibold text-[var(--color-ok)]">{saveMsg}</p>
+            )}
           </div>
+          <p className="mt-2 text-xs text-[var(--color-slate)]/55">
+            الطلاب والدرجات يُحفظون تلقائياً في localStorage عند الإضافة أو الاستيراد من Excel.
+          </p>
         </Panel>
       )}
 

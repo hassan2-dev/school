@@ -56,10 +56,14 @@ body {
   font-size: 12px;
 }
 
+.sheet-table.nested-print-table {
+  table-layout: fixed;
+}
+
 .sheet-table th,
 .sheet-table td {
   border: 1px solid #222;
-  padding: 6px 8px;
+  padding: 4px 5px;
   text-align: center;
 }
 
@@ -68,30 +72,70 @@ body {
   font-weight: 700;
 }
 
-.sheet-table td.name-cell,
-.sheet-table th.name-cell {
-  text-align: right;
-  font-size: 15px;
-  font-weight: 700;
+/* عمود التسلسل ضيق */
+.sheet-table th.col-serial,
+.sheet-table td.col-serial {
+  width: 28px;
+  max-width: 28px;
+  padding: 4px 2px;
+  font-size: 11px;
 }
 
+/* عمود الاسم: عرض ثابت كبير يكفي الاسم الثلاثي */
+.sheet-table th.col-student-name,
+.sheet-table td.col-student-name,
 .sheet-table td.student-name-cell {
+  width: 62mm;
+  min-width: 62mm;
+  max-width: 68mm;
   text-align: right;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.45;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+  padding: 6px 8px;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.sheet-table th.col-student-name {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* أعمدة الدرجات: أضيق وأصغر */
+.sheet-table.nested-print-table th:not(.col-serial):not(.col-student-name),
+.sheet-table.nested-print-table td:not(.col-serial):not(.col-student-name) {
+  font-size: 10px;
+  padding: 3px 2px;
+  width: auto;
 }
 
 .sheet-table th.group-head {
   background: #e8eef0;
   font-weight: 800;
+  font-size: 10px !important;
 }
 
 .nested-print-table th {
   vertical-align: middle;
-  white-space: nowrap;
+}
+
+@media print {
+  .sheet-table th.col-student-name,
+  .sheet-table td.col-student-name,
+  .sheet-table td.student-name-cell {
+    width: 62mm !important;
+    min-width: 62mm !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+  }
+
+  .sheet-table.nested-print-table th:not(.col-serial):not(.col-student-name),
+  .sheet-table.nested-print-table td:not(.col-serial):not(.col-student-name) {
+    font-size: 9px !important;
+    padding: 2px 1px !important;
+  }
 }
 
 .sheet-style-formal .sheet-table th {

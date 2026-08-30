@@ -81,9 +81,9 @@ export function SectionPage() {
                 <tr key={st.id} className="border-b border-[var(--color-line)]/50">
                   <td className="py-2">{i + 1}</td>
                   <td className="py-2">
-                    <Link to={`/student/${st.id}`} className="font-medium hover:text-[var(--color-teal)]">
-                      {st.fullName}
-                    </Link>
+                      <Link to={`/student/${st.id}`} className="text-lg font-extrabold hover:text-[var(--color-teal)]">
+                        {st.fullName}
+                      </Link>
                   </td>
                   <td className="py-2">
                     <Link to={`/student/${st.id}`} className="text-[var(--color-teal)]">

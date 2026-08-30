@@ -141,15 +141,23 @@ export function ClassGradeSheet({ data }: { data: ClassSheetData }) {
       <ClassHeader data={data} />
 
       <table className="sheet-table nested-print-table">
+        <colgroup>
+          <col className="col-serial" style={{ width: '28px' }} />
+          <col className="col-student-name" style={{ width: '62mm' }} />
+          {leaves.map((leaf) => (
+            <col key={leaf.id} />
+          ))}
+          {showExtraFinal && <col />}
+        </colgroup>
         <thead>
           {matrix.map((row, rowIdx) => (
             <tr key={rowIdx}>
               {rowIdx === 0 && (
                 <>
-                  <th style={{ width: 40 }} rowSpan={depth}>
+                  <th className="col-serial" rowSpan={depth}>
                     ت
                   </th>
-                  <th className="name-cell" rowSpan={depth}>
+                  <th className="col-student-name name-cell" rowSpan={depth}>
                     اسم الطالب
                   </th>
                 </>
@@ -171,8 +179,10 @@ export function ClassGradeSheet({ data }: { data: ClassSheetData }) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.number}>
-              <td>{row.number}</td>
-              <td className="name-cell student-name-cell">{row.studentName || '\u00A0'}</td>
+              <td className="col-serial">{row.number}</td>
+              <td className="col-student-name student-name-cell name-cell">
+                {row.studentName || '\u00A0'}
+              </td>
               {leaves.map((leaf) => {
                 const values = row.valuesById ?? emptyValues;
                 const v = values[leaf.id];

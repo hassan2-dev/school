@@ -1,5 +1,7 @@
 /** النموذج الجديد — مدرسة واحدة، قاعدة طلاب مركزية، بدون تسجيل دخول */
 
+export type PrintSheetStyle = 'classic' | 'formal' | 'clean';
+
 export interface SchoolConfig {
   name: string;
   academicYear: string; // 2024/2025
@@ -9,9 +11,15 @@ export interface SchoolConfig {
   ministryTitle?: string;
   /** المديرية / المنطقة */
   directorate?: string;
+  /** عنوان الكشف المحفوظ */
+  documentTitle?: string;
+  /** نوع الامتحان المحفوظ */
+  examLabel?: string;
+  /** اسم المعلم المحفوظ */
+  teacherName?: string;
+  /** قالب شكل الطباعة */
+  printStyle?: PrintSheetStyle;
 }
-
-export type PrintSheetStyle = 'classic' | 'formal' | 'clean';
 
 /** حقول رأس كشف المادة — قابلة للتعديل قبل الطباعة */
 export interface PrintHeader {
