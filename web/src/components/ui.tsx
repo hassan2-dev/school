@@ -65,7 +65,7 @@ export function Panel({
   actions,
   className = '',
 }: {
-  title?: string;
+  title?: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -115,5 +115,77 @@ export function Btn({
     >
       {children}
     </button>
+  );
+}
+
+export interface ExplainSection {
+  title: string;
+  body: ReactNode;
+}
+
+/** نافذة توضيحية — ماذا / أين / لماذا */
+export function ExplainDialog({
+  open,
+  title,
+  sections,
+  note,
+  confirmLabel = 'موافق، نسخ',
+  cancelLabel = 'إلغاء',
+  onConfirm,
+  onClose,
+  infoOnly = false,
+}: {
+  open: boolean;
+  title: string;
+  sections: ExplainSection[];
+  note?: ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm?: () => void;
+  onClose: () => void;
+  infoOnly?: boolean;
+}) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="explain-dialog-title"
+      >
+        <h3 id="explain-dialog-title" className="font-display text-xl font-bold text-[var(--color-teal-deep)]">
+          {title}
+        </h3>
+
+        <div className="mt-4 space-y-4">
+          {sections.map((s) => (
+            <div key={s.title} className="rounded-xl bg-[var(--color-mint)]/25 p-4">
+              <p className="text-sm font-bold text-[var(--color-teal-deep)]">{s.title}</p>
+              <div className="mt-1 text-sm leading-relaxed text-[var(--color-slate)]/80">{s.body}</div>
+            </div>
+          ))}
+        </div>
+
+        {note && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {note}
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <Btn variant="ghost" onClick={onClose}>
+            {infoOnly ? 'حسناً' : cancelLabel}
+          </Btn>
+          {!infoOnly && onConfirm && <Btn onClick={onConfirm}>{confirmLabel}</Btn>}
+        </div>
+      </div>
+    </div>
   );
 }

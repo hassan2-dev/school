@@ -133,18 +133,28 @@ export const templateService = {
     subjectId: string,
     targetGradeId: string,
     newName?: string,
-  ): SubjectTemplate | null {
+  ): { ok: true; subject: SubjectTemplate } | { ok: false; reason: string } {
     const source = getSubject(sourceGradeId, subjectId);
-    if (!source) return null;
+    if (!source) return { ok: false, reason: 'المادة غير موجودة' };
 
-    const copy = cloneSubject(source, newName);
+    const name = (newName ?? source.name).trim();
+    if (!name) return { ok: false, reason: 'أدخل اسم المادة' };
+
+    const target = this.getByGrade(targetGradeId);
+    if (!target) return { ok: false, reason: 'الصف الهدف غير موجود' };
+
+    if (target.subjects.some((s) => s.name.trim() === name)) {
+      return { ok: false, reason: `يوجد مادة باسم "${name}" في الصف الهدف — غيّر الاسم` };
+    }
+
+    const copy = cloneSubject(source, name);
     store.setState((s) => ({
       ...s,
       templates: s.templates.map((t) =>
         t.gradeId === targetGradeId ? { ...t, subjects: [...t.subjects, copy] } : t,
       ),
     }));
-    return copy;
+    return { ok: true, subject: copy };
   },
 
   /**
@@ -156,12 +166,22 @@ export const templateService = {
     sourceGradeId: string,
     targetGradeId: string,
     mode: 'replace' | 'merge' = 'replace',
-  ): number {
-    if (sourceGradeId === targetGradeId) return 0;
+  ): { ok: true; added: number; skipped: number } | { ok: false; reason: string } {
+    if (sourceGradeId === targetGradeId) {
+      return { ok: false, reason: 'اختر صفاً مختلفاً عن الصف المصدر' };
+    }
+
     const source = this.getByGrade(sourceGradeId);
-    if (!source) return 0;
+    if (!source) return { ok: false, reason: 'الصف المصدر غير موجود' };
+
+    const target = this.getByGrade(targetGradeId);
+    if (!target) return { ok: false, reason: 'الصف الهدف غير موجود' };
 
     const copies = source.subjects.map((sub) => cloneSubject(sub));
+    const removedSubjectIds = mode === 'replace' ? target.subjects.map((s) => s.id) : [];
+
+    let added = 0;
+    let skipped = 0;
 
     store.setState((s) => ({
       ...s,
@@ -169,6 +189,8 @@ export const templateService = {
         if (t.gradeId !== targetGradeId) return t;
 
         if (mode === 'replace') {
+          added = copies.length;
+          skipped = 0;
           return {
             ...t,
             subjects: copies,
@@ -177,18 +199,29 @@ export const templateService = {
         }
 
         const existingNames = new Set(t.subjects.map((sub) => sub.name.trim()));
-        const merged = [
-          ...t.subjects,
-          ...copies.filter((sub) => !existingNames.has(sub.name.trim())),
-        ];
+        const toAdd = copies.filter((sub) => {
+          const name = sub.name.trim();
+          if (existingNames.has(name)) {
+            skipped += 1;
+            return false;
+          }
+          existingNames.add(name);
+          added += 1;
+          return true;
+        });
+
         return {
           ...t,
-          subjects: merged,
+          subjects: [...t.subjects, ...toAdd],
           defaultSections: t.defaultSections.length ? t.defaultSections : [...source.defaultSections],
         };
       }),
+      scores:
+        mode === 'replace' && removedSubjectIds.length
+          ? s.scores.filter((sc) => !removedSubjectIds.includes(sc.subjectId))
+          : s.scores,
     }));
 
-    return copies.length;
+    return { ok: true, added, skipped };
   },
 };
