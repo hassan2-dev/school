@@ -1,4 +1,5 @@
 import {
+  cloneColumns,
   convertColumnToGroup,
   ensureColumns,
   insertColumn,
@@ -12,6 +13,14 @@ import type { ColumnDef, GradeTemplate, SubjectTemplate } from '../types/core';
 
 function getSubject(gradeId: string, subjectId: string): SubjectTemplate | undefined {
   return store.getState().templates.find((t) => t.gradeId === gradeId)?.subjects.find((s) => s.id === subjectId);
+}
+
+function cloneSubject(sub: SubjectTemplate, nameOverride?: string): SubjectTemplate {
+  return {
+    id: uid('sub'),
+    name: (nameOverride ?? sub.name).trim(),
+    columns: cloneColumns(ensureColumns(sub)),
+  };
 }
 
 export const templateService = {
@@ -116,5 +125,70 @@ export const templateService = {
         }));
       }
     }
+  },
+
+  /** نسخ مادة واحدة إلى صف آخر (مع أعمدة جديدة) */
+  copySubject(
+    sourceGradeId: string,
+    subjectId: string,
+    targetGradeId: string,
+    newName?: string,
+  ): SubjectTemplate | null {
+    const source = getSubject(sourceGradeId, subjectId);
+    if (!source) return null;
+
+    const copy = cloneSubject(source, newName);
+    store.setState((s) => ({
+      ...s,
+      templates: s.templates.map((t) =>
+        t.gradeId === targetGradeId ? { ...t, subjects: [...t.subjects, copy] } : t,
+      ),
+    }));
+    return copy;
+  },
+
+  /**
+   * نسخ قالب صف كامل إلى صف آخر
+   * replace = يستبدل مواد الصف الهدف
+   * merge = يضيف المواد (يتخطى الأسماء المكررة)
+   */
+  copyGradeTemplate(
+    sourceGradeId: string,
+    targetGradeId: string,
+    mode: 'replace' | 'merge' = 'replace',
+  ): number {
+    if (sourceGradeId === targetGradeId) return 0;
+    const source = this.getByGrade(sourceGradeId);
+    if (!source) return 0;
+
+    const copies = source.subjects.map((sub) => cloneSubject(sub));
+
+    store.setState((s) => ({
+      ...s,
+      templates: s.templates.map((t) => {
+        if (t.gradeId !== targetGradeId) return t;
+
+        if (mode === 'replace') {
+          return {
+            ...t,
+            subjects: copies,
+            defaultSections: [...source.defaultSections],
+          };
+        }
+
+        const existingNames = new Set(t.subjects.map((sub) => sub.name.trim()));
+        const merged = [
+          ...t.subjects,
+          ...copies.filter((sub) => !existingNames.has(sub.name.trim())),
+        ];
+        return {
+          ...t,
+          subjects: merged,
+          defaultSections: t.defaultSections.length ? t.defaultSections : [...source.defaultSections],
+        };
+      }),
+    }));
+
+    return copies.length;
   },
 };

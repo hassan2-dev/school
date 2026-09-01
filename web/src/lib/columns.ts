@@ -152,3 +152,12 @@ export function convertColumnToGroup(cols: ColumnDef[], columnId: string): Colum
     return { ...c, children: convertColumnToGroup(c.children ?? [], columnId) };
   });
 }
+
+/** نسخ شجرة أعمدة بمعرّفات جديدة */
+export function cloneColumns(cols: ColumnDef[]): ColumnDef[] {
+  return cols.map((c) => ({
+    id: uid('col'),
+    label: c.label,
+    children: cloneColumns(c.children ?? []),
+  }));
+}

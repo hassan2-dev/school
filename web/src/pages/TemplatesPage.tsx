@@ -10,7 +10,12 @@ export function TemplatesPage() {
   const [selectedGrade, setSelectedGrade] = useState(grades[0]?.id || '');
   const [newSubject, setNewSubject] = useState('');
   const [editingSubject, setEditingSubject] = useState<string | null>(null);
+  const [copyTargetGrade, setCopyTargetGrade] = useState('');
+  const [copyMode, setCopyMode] = useState<'replace' | 'merge'>('replace');
+  const [copyMsg, setCopyMsg] = useState('');
   const template = templates.find((t) => t.gradeId === selectedGrade);
+  const selectedGradeName = grades.find((g) => g.id === selectedGrade)?.name;
+  const otherGrades = grades.filter((g) => g.id !== selectedGrade);
 
   function addSubject() {
     if (!newSubject.trim()) return;
@@ -18,37 +23,95 @@ export function TemplatesPage() {
     setNewSubject('');
   }
 
+  function copyWholeTemplate() {
+    if (!copyTargetGrade) {
+      alert('اختر الصف الهدف');
+      return;
+    }
+    const count = templateService.copyGradeTemplate(selectedGrade, copyTargetGrade, copyMode);
+    const targetName = grades.find((g) => g.id === copyTargetGrade)?.name;
+    setCopyMsg(
+      copyMode === 'replace'
+        ? `تم نسخ ${count} مادة من ${selectedGradeName} إلى ${targetName} (استبدال كامل)`
+        : `تم دمج ${count} مادة من ${selectedGradeName} إلى ${targetName}`,
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="قوالب المواد"
-        subtitle="عمود رئيسي يحتوي 3–4 أعمدة فرعية — يظهر بنفس الترتيب في الجدول والطباعة"
+        subtitle="انسخ قالب صف كامل أو مادة واحدة إلى صف آخر — ثم خصّص الأعمدة كما تريد"
       />
+
+      <Panel title="نسخ قالب صف كامل">
+        <p className="mb-3 text-sm text-[var(--color-slate)]/65">
+          انسخ كل مواد <strong>{selectedGradeName}</strong> مع أعمدتها إلى صف آخر.
+        </p>
+        <div className="grid gap-3 md:grid-cols-4">
+          <label className="text-sm">
+            من الصف
+            <select
+              className="mt-1 w-full rounded-xl border border-[var(--color-line)] px-3 py-2"
+              value={selectedGrade}
+              onChange={(e) => {
+                setSelectedGrade(e.target.value);
+                setEditingSubject(null);
+                setCopyMsg('');
+              }}
+            >
+              {grades.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            إلى الصف
+            <select
+              className="mt-1 w-full rounded-xl border border-[var(--color-line)] px-3 py-2"
+              value={copyTargetGrade}
+              onChange={(e) => setCopyTargetGrade(e.target.value)}
+            >
+              <option value="">اختر الصف</option>
+              {otherGrades.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            طريقة النسخ
+            <select
+              className="mt-1 w-full rounded-xl border border-[var(--color-line)] px-3 py-2"
+              value={copyMode}
+              onChange={(e) => setCopyMode(e.target.value as 'replace' | 'merge')}
+            >
+              <option value="replace">استبدال مواد الصف الهدف</option>
+              <option value="merge">دمج (بدون تكرار الأسماء)</option>
+            </select>
+          </label>
+          <div className="flex items-end">
+            <Btn onClick={copyWholeTemplate} disabled={!copyTargetGrade}>
+              نسخ القالب
+            </Btn>
+          </div>
+        </div>
+        {copyMsg && <p className="mt-2 text-sm font-semibold text-[var(--color-ok)]">{copyMsg}</p>}
+      </Panel>
 
       <Panel>
         <div className="flex flex-wrap gap-3">
-          <select
-            className="rounded-xl border border-[var(--color-line)] px-3 py-2"
-            value={selectedGrade}
-            onChange={(e) => {
-              setSelectedGrade(e.target.value);
-              setEditingSubject(null);
-            }}
-          >
-            {grades.map((g) => (
-              <option key={g.id} value={g.id}>
-                الصف {g.name}
-              </option>
-            ))}
-          </select>
           <Btn variant="ghost" onClick={() => templateService.applyDefaultSections(selectedGrade)}>
-            إنشاء الشعب الافتراضية
+            إنشاء الشعب الافتراضية لهذا الصف
           </Btn>
         </div>
       </Panel>
 
       <Panel
-        title={`مواد الصف ${grades.find((g) => g.id === selectedGrade)?.name}`}
+        title={`مواد الصف ${selectedGradeName}`}
         actions={
           <div className="flex gap-2">
             <input
@@ -67,12 +130,15 @@ export function TemplatesPage() {
               key={sub.id}
               sub={sub}
               gradeId={selectedGrade}
+              grades={grades}
               isEditing={editingSubject === sub.id}
               onToggleEdit={() => setEditingSubject(editingSubject === sub.id ? null : sub.id)}
             />
           ))}
           {!template?.subjects.length && (
-            <p className="py-4 text-center text-sm text-[var(--color-slate)]/45">لا توجد مواد — أضف مادة أعلاه</p>
+            <p className="py-4 text-center text-sm text-[var(--color-slate)]/45">
+              لا توجد مواد — أضف مادة أو انسخ قالب من صف آخر
+            </p>
           )}
         </div>
       </Panel>
@@ -83,11 +149,13 @@ export function TemplatesPage() {
 function SubjectCard({
   sub,
   gradeId,
+  grades,
   isEditing,
   onToggleEdit,
 }: {
   sub: SubjectTemplate;
   gradeId: string;
+  grades: { id: string; name: string }[];
   isEditing: boolean;
   onToggleEdit: () => void;
 }) {
@@ -96,9 +164,13 @@ function SubjectCard({
   const [rootLabel, setRootLabel] = useState('');
   const [childDraft, setChildDraft] = useState<{ parentId: string; label: string } | null>(null);
   const [renameCol, setRenameCol] = useState<{ id: string; label: string } | null>(null);
+  const [showCopy, setShowCopy] = useState(false);
+  const [copyToGrade, setCopyToGrade] = useState('');
+  const [copySubjectName, setCopySubjectName] = useState(sub.name);
 
   const columns = ensureColumns(sub);
   const leaves = flatLeaves(columns);
+  const otherGrades = grades.filter((g) => g.id !== gradeId);
 
   function doRename() {
     if (newName.trim()) templateService.renameSubject(gradeId, sub.id, newName);
@@ -123,6 +195,17 @@ function SubjectCard({
     setRenameCol(null);
   }
 
+  function doCopySubject() {
+    if (!copyToGrade) {
+      alert('اختر الصف الهدف');
+      return;
+    }
+    templateService.copySubject(gradeId, sub.id, copyToGrade, copySubjectName);
+    setShowCopy(false);
+    const target = grades.find((g) => g.id === copyToGrade)?.name;
+    alert(`تم نسخ "${sub.name}" إلى صف ${target}`);
+  }
+
   return (
     <div className="rounded-xl border border-[var(--color-line)] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -143,9 +226,18 @@ function SubjectCard({
         ) : (
           <p className="text-lg font-semibold">{sub.name}</p>
         )}
-        <div className="flex gap-2 text-sm">
+        <div className="flex flex-wrap gap-2 text-sm">
           <button className="text-[var(--color-teal)]" onClick={onToggleEdit}>
             {isEditing ? 'إغلاق المحرر' : 'تعديل الأعمدة'}
+          </button>
+          <button
+            className="text-[var(--color-teal)]"
+            onClick={() => {
+              setShowCopy((v) => !v);
+              setCopySubjectName(sub.name);
+            }}
+          >
+            نسخ لصف آخر
           </button>
           <button
             className="text-[var(--color-teal)]"
@@ -166,6 +258,38 @@ function SubjectCard({
           </button>
         </div>
       </div>
+
+      {showCopy && (
+        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-[var(--color-teal)] bg-[var(--color-mint)]/20 p-3">
+          <label className="text-sm">
+            إلى الصف
+            <select
+              className="mt-1 block rounded-lg border px-2 py-1 text-sm"
+              value={copyToGrade}
+              onChange={(e) => setCopyToGrade(e.target.value)}
+            >
+              <option value="">اختر</option>
+              {otherGrades.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            اسم المادة في الصف الجديد
+            <input
+              className="mt-1 block rounded-lg border px-2 py-1 text-sm"
+              value={copySubjectName}
+              onChange={(e) => setCopySubjectName(e.target.value)}
+            />
+          </label>
+          <Btn onClick={doCopySubject}>نسخ المادة</Btn>
+          <Btn variant="ghost" onClick={() => setShowCopy(false)}>
+            إلغاء
+          </Btn>
+        </div>
+      )}
 
       <div className="mt-3">
         <p className="mb-2 text-xs text-[var(--color-slate)]/55">
