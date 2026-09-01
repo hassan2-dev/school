@@ -382,7 +382,7 @@ function SubjectCard({
     setRenameCol(null);
   }
 
-  function doRename() {
+  return (
     <div className="rounded-xl border border-[var(--color-line)] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         {renaming ? (
