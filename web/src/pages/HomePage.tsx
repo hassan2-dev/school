@@ -216,26 +216,12 @@ export function HomePage() {
             {backupMsg}
           </p>
         )}
-        {!cloudReady ? (
-          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-[var(--color-danger)]">
-            <p className="font-semibold">Firebase غير متصل</p>
-            <ul className="mt-1 list-inside list-disc space-y-1">
-              <li>
-                افتح الرابط المحلي الصحيح: <strong>http://localhost:5174</strong> (أو المنفذ اللي يظهر
-                بـ npm run dev)
-              </li>
-              <li>لا تستخدم رابط Vercel حتى تضيف نفس المفاتيح هناك</li>
-              <li>أوقف السيرفر (Ctrl+C) ثم من مجلد web: npm run dev</li>
-              <li>
-                حالة المفاتيح: apiKey={fb.hasApiKey ? '✓' : '✗'} · projectId={fb.hasApiKey && fb.projectId ? '✓' : '✗'} ·
-                appId={fb.hasAppId ? '✓' : '✗'}
-              </li>
-            </ul>
-          </div>
-        ) : (
+        {cloudReady ? (
           <p className="mt-2 text-sm text-[var(--color-ok)]">
             متصل بمشروع Firebase: <strong>{fb.projectId}</strong>
           </p>
+        ) : (
+          <p className="mt-2 text-sm text-[var(--color-danger)]">Firebase غير متصل — حدّث الصفحة بعد النشر</p>
         )}
       </Panel>
     </div>
