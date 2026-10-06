@@ -10,14 +10,19 @@ export function HomePage() {
   const { students, grades, sections } = useStore();
   const [storageStatus, setStorageStatus] = useState('جاري التحميل...');
   const [backupMsg, setBackupMsg] = useState('');
+  const [syncing, setSyncing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cloudReady = syncService.isCloudReady();
   const active = students.filter((s) => s.status === 'active');
   const graduated = students.filter((s) => s.status === 'graduated');
 
+  async function refreshStatus() {
+    const meta = await syncService.getMeta();
+    setStorageStatus(syncService.statusLabel(meta));
+  }
+
   useEffect(() => {
-    void syncService.getMeta().then((meta) => {
-      setStorageStatus(syncService.statusLabel(meta));
-    });
+    void refreshStatus();
   }, [students.length]);
 
   function clearAll() {
@@ -63,13 +68,35 @@ export function HomePage() {
     window.location.reload();
   }
 
+  async function pushCloud() {
+    if (!confirm('رفع كل بيانات هذا المتصفح إلى Firebase؟')) return;
+    setSyncing(true);
+    const result = await syncService.pushToCloud();
+    setBackupMsg(result.message);
+    await refreshStatus();
+    setSyncing(false);
+  }
+
+  async function pullCloud() {
+    if (!confirm('جلب البيانات من Firebase؟\nسيستبدل البيانات الحالية في هذا المتصفح.')) return;
+    setSyncing(true);
+    const result = await syncService.pullFromCloud();
+    setBackupMsg(result.message);
+    if (result.ok) {
+      window.location.reload();
+      return;
+    }
+    await refreshStatus();
+    setSyncing(false);
+  }
+
   return (
     <div className="space-y-8">
       <section className="relative overflow-hidden rounded-[28px] bg-[#0b1c24] px-6 py-10 text-white md:px-10">
         <div className="relative max-w-2xl">
           <h1 className="font-display text-4xl font-bold md:text-5xl">نظام الطلاب والدرجات</h1>
           <p className="mt-3 text-white/70">
-            قاعدة بيانات محلية (IndexedDB) لكل طلاب المدرسة — جاهزة للمزامنة السحابية لاحقاً.
+            حفظ محلي + مزامنة Firebase — ارفع من جهاز، واجلب من جهاز آخر.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link to="/students" className="rounded-xl bg-[var(--color-teal)] px-5 py-2.5 text-sm font-semibold">
@@ -136,21 +163,31 @@ export function HomePage() {
         </div>
       </Panel>
 
-      <Panel title="قاعدة البيانات">
+      <Panel title="قاعدة البيانات والمزامنة">
         <p className="mb-2 text-sm font-semibold text-[var(--color-teal-deep)]">{storageStatus}</p>
         <ul className="mb-4 list-inside list-disc space-y-1 text-sm text-[var(--color-slate)]/70">
           <li>
-            <strong>تنزيل نسخة:</strong> من المتصفح اللي فيه البيانات → احفظ ملف JSON
+            <strong>رفع إلى Firebase:</strong> من المتصفح اللي فيه البيانات
           </li>
           <li>
-            <strong>رفع نسخة:</strong> افتح الموقع في المتصفح الثاني → اختر نفس الملف
+            <strong>جلب من Firebase:</strong> في أي متصفح/جهاز ثاني
           </li>
-          <li>الحفظ المحلي: IndexedDB · المزامنة السحابية لاحقاً مع Firebase</li>
+          <li>أو استخدم ملف JSON كنسخة احتياطية يدوية</li>
         </ul>
+        <div className="mb-3 flex flex-wrap gap-2">
+          <Btn onClick={() => void pushCloud()} disabled={!cloudReady || syncing}>
+            {syncing ? 'جاري...' : 'رفع إلى Firebase'}
+          </Btn>
+          <Btn variant="ghost" onClick={() => void pullCloud()} disabled={!cloudReady || syncing}>
+            جلب من Firebase
+          </Btn>
+        </div>
         <div className="flex flex-wrap gap-2">
-          <Btn onClick={exportData}>تنزيل نسخة احتياطية</Btn>
+          <Btn variant="ghost" onClick={exportData}>
+            تنزيل نسخة JSON
+          </Btn>
           <Btn variant="ghost" onClick={() => fileRef.current?.click()}>
-            رفع نسخة احتياطية
+            رفع نسخة JSON
           </Btn>
           <input
             ref={fileRef}
@@ -167,7 +204,20 @@ export function HomePage() {
           </Btn>
         </div>
         {backupMsg && (
-          <p className="mt-3 text-sm font-semibold text-[var(--color-ok)]">{backupMsg}</p>
+          <p
+            className={`mt-3 text-sm font-semibold ${
+              backupMsg.includes('نجاح') || backupMsg.includes('تم')
+                ? 'text-[var(--color-ok)]'
+                : 'text-[var(--color-danger)]'
+            }`}
+          >
+            {backupMsg}
+          </p>
+        )}
+        {!cloudReady && (
+          <p className="mt-2 text-sm text-[var(--color-danger)]">
+            Firebase غير متصل — أعد تشغيل `npm run dev` بعد إنشاء ملف `.env`
+          </p>
         )}
       </Panel>
     </div>
