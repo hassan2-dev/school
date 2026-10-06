@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Btn, Panel, StatCard } from '../components/ui';
 import { useStore } from '../hooks/useStore';
 import { downloadBackup, importBackupFile } from '../services/backup';
+import { firebaseConfigStatus } from '../lib/firebase';
 import { syncService } from '../services/sync';
 import { store } from '../store';
 
@@ -12,7 +13,8 @@ export function HomePage() {
   const [backupMsg, setBackupMsg] = useState('');
   const [syncing, setSyncing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const cloudReady = syncService.isCloudReady();
+  const fb = firebaseConfigStatus();
+  const cloudReady = fb.ready;
   const active = students.filter((s) => s.status === 'active');
   const graduated = students.filter((s) => s.status === 'graduated');
 
@@ -214,9 +216,25 @@ export function HomePage() {
             {backupMsg}
           </p>
         )}
-        {!cloudReady && (
-          <p className="mt-2 text-sm text-[var(--color-danger)]">
-            Firebase غير متصل — أعد تشغيل `npm run dev` بعد إنشاء ملف `.env`
+        {!cloudReady ? (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-[var(--color-danger)]">
+            <p className="font-semibold">Firebase غير متصل</p>
+            <ul className="mt-1 list-inside list-disc space-y-1">
+              <li>
+                افتح الرابط المحلي الصحيح: <strong>http://localhost:5174</strong> (أو المنفذ اللي يظهر
+                بـ npm run dev)
+              </li>
+              <li>لا تستخدم رابط Vercel حتى تضيف نفس المفاتيح هناك</li>
+              <li>أوقف السيرفر (Ctrl+C) ثم من مجلد web: npm run dev</li>
+              <li>
+                حالة المفاتيح: apiKey={fb.hasApiKey ? '✓' : '✗'} · projectId={fb.hasApiKey && fb.projectId ? '✓' : '✗'} ·
+                appId={fb.hasAppId ? '✓' : '✗'}
+              </li>
+            </ul>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-[var(--color-ok)]">
+            متصل بمشروع Firebase: <strong>{fb.projectId}</strong>
           </p>
         )}
       </Panel>

@@ -4,17 +4,31 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 const config = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
+  apiKey: String(import.meta.env.VITE_FIREBASE_API_KEY || '').trim(),
+  authDomain: String(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '').trim(),
+  projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID || '').trim(),
+  storageBucket: String(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '').trim(),
+  messagingSenderId: String(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '').trim(),
+  appId: String(import.meta.env.VITE_FIREBASE_APP_ID || '').trim(),
 };
 
 export const isFirebaseConfigured = Boolean(
-  config.apiKey && config.projectId && config.appId && config.apiKey !== 'demo',
+  config.apiKey &&
+    config.projectId &&
+    config.appId &&
+    config.apiKey !== 'demo' &&
+    !config.apiKey.includes('your-'),
 );
+
+/** للتشخيص في الواجهة — بدون كشف المفاتيح */
+export function firebaseConfigStatus() {
+  return {
+    ready: isFirebaseConfigured,
+    projectId: config.projectId || null,
+    hasApiKey: Boolean(config.apiKey && config.apiKey !== 'demo'),
+    hasAppId: Boolean(config.appId),
+  };
+}
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
