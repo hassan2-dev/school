@@ -80,7 +80,7 @@ export function FormsPrintPage() {
 
   function saveHeaderDefaults() {
     configService.savePrintHeader(header);
-    setSaveMsg('تم الحفظ في localStorage — الرأس والمدرسة يبقيان بعد إغلاق الصفحة');
+    setSaveMsg('تم الحفظ في قاعدة البيانات المحلية (IndexedDB) — الرأس يبقى بعد إغلاق الصفحة');
   }
 
   const individualSheets: IndividualSheetData[] = useMemo(() => {
@@ -183,7 +183,7 @@ export function FormsPrintPage() {
     <div className="space-y-6 print-root">
       <PageHeader
         title="الطباعة"
-        subtitle="كشف فارغ = بدون أسماء. كشف بالدرجات = مع الطلاب المحفوظين. البيانات تُحفظ في المتصفح (localStorage)"
+        subtitle="كشف فارغ = بدون أسماء. كشف بالدرجات = مع الطلاب المحفوظين. البيانات تُحفظ محلياً (IndexedDB)"
         actions={
           <Btn className="no-print" onClick={() => window.print()}>
             طباعة
@@ -309,7 +309,7 @@ export function FormsPrintPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Btn onClick={saveHeaderDefaults}>حفظ في localStorage</Btn>
+            <Btn onClick={saveHeaderDefaults}>حفظ في قاعدة البيانات</Btn>
             <Btn variant="ghost" onClick={() => setHeader(defaultHeader(config))}>
               استعادة المحفوظ
             </Btn>
@@ -318,7 +318,7 @@ export function FormsPrintPage() {
             )}
           </div>
           <p className="mt-2 text-xs text-[var(--color-slate)]/55">
-            الطلاب والدرجات يُحفظون تلقائياً في localStorage عند الإضافة أو الاستيراد من Excel.
+            الطلاب والدرجات يُحفظون تلقائياً في IndexedDB عند الإضافة أو الاستيراد من Excel.
           </p>
         </Panel>
       )}

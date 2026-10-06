@@ -11,6 +11,7 @@
     "generate:samples": "tsx scripts/generate-samples.ts"
   },
   "dependencies": {
+    "dexie": "^4.4.6",
     "file-saver": "^2.0.5",
     "firebase": "^12.17.1",
     "fuse.js": "^7.5.0",

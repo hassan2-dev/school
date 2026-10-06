@@ -1,12 +1,24 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Btn, Panel, StatCard } from '../components/ui';
 import { useStore } from '../hooks/useStore';
+import { downloadBackup, importBackupFile } from '../services/backup';
+import { syncService } from '../services/sync';
 import { store } from '../store';
 
 export function HomePage() {
   const { students, grades, sections } = useStore();
+  const [storageStatus, setStorageStatus] = useState('جاري التحميل...');
+  const [backupMsg, setBackupMsg] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
   const active = students.filter((s) => s.status === 'active');
   const graduated = students.filter((s) => s.status === 'graduated');
+
+  useEffect(() => {
+    void syncService.getMeta().then((meta) => {
+      setStorageStatus(syncService.statusLabel(meta));
+    });
+  }, [students.length]);
 
   function clearAll() {
     if (
@@ -26,14 +38,38 @@ export function HomePage() {
     window.location.reload();
   }
 
+  function exportData() {
+    downloadBackup();
+    setBackupMsg('تم تنزيل ملف النسخة الاحتياطية — احفظه على جهازك أو ارفعه في متصفح آخر');
+  }
+
+  async function onImportFile(file: File | undefined) {
+    if (!file) return;
+    if (
+      !confirm(
+        'رفع نسخة احتياطية؟\nسيستبدل كل البيانات الحالية في هذا المتصفح بمحتوى الملف.',
+      )
+    ) {
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    const result = await importBackupFile(file);
+    if (!result.ok) {
+      setBackupMsg(result.reason);
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    setBackupMsg('تم رفع البيانات بنجاح');
+    window.location.reload();
+  }
+
   return (
     <div className="space-y-8">
       <section className="relative overflow-hidden rounded-[28px] bg-[#0b1c24] px-6 py-10 text-white md:px-10">
         <div className="relative max-w-2xl">
           <h1 className="font-display text-4xl font-bold md:text-5xl">نظام الطلاب والدرجات</h1>
           <p className="mt-3 text-white/70">
-            قاعدة بيانات مركزية لكل طلاب المدرسة — إضافة وتعديل الشعب والطلاب، قوالب ثابتة للمواد،
-            وترقية تلقائية عند النجاح.
+            قاعدة بيانات محلية (IndexedDB) لكل طلاب المدرسة — جاهزة للمزامنة السحابية لاحقاً.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link to="/students" className="rounded-xl bg-[var(--color-teal)] px-5 py-2.5 text-sm font-semibold">
@@ -100,11 +136,29 @@ export function HomePage() {
         </div>
       </Panel>
 
-      <Panel title="إدارة البيانات">
-        <p className="mb-3 text-sm text-[var(--color-slate)]/65">
-          تصفير يحذف الطلاب والدرجات فقط، ويبقي الصفوف والشعب والقوالب.
-        </p>
+      <Panel title="قاعدة البيانات">
+        <p className="mb-2 text-sm font-semibold text-[var(--color-teal-deep)]">{storageStatus}</p>
+        <ul className="mb-4 list-inside list-disc space-y-1 text-sm text-[var(--color-slate)]/70">
+          <li>
+            <strong>تنزيل نسخة:</strong> من المتصفح اللي فيه البيانات → احفظ ملف JSON
+          </li>
+          <li>
+            <strong>رفع نسخة:</strong> افتح الموقع في المتصفح الثاني → اختر نفس الملف
+          </li>
+          <li>الحفظ المحلي: IndexedDB · المزامنة السحابية لاحقاً مع Firebase</li>
+        </ul>
         <div className="flex flex-wrap gap-2">
+          <Btn onClick={exportData}>تنزيل نسخة احتياطية</Btn>
+          <Btn variant="ghost" onClick={() => fileRef.current?.click()}>
+            رفع نسخة احتياطية
+          </Btn>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => void onImportFile(e.target.files?.[0])}
+          />
           <Btn variant="warn" onClick={clearAll}>
             تصفير البيانات
           </Btn>
@@ -112,6 +166,9 @@ export function HomePage() {
             تحميل بيانات تجريبية
           </Btn>
         </div>
+        {backupMsg && (
+          <p className="mt-3 text-sm font-semibold text-[var(--color-ok)]">{backupMsg}</p>
+        )}
       </Panel>
     </div>
   );
